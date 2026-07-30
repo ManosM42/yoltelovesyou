@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -15,6 +15,11 @@ import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Toaster } from "@/components/ui/sonner";
 import LoadingScreen from "@/components/site/LoadingScreen";
+
+// Imports για το Popup & Audio
+import blickAudio from "@/assets/BLICK.mp3";
+import gallery4 from "@/assets/gallery-3.jpg";
+import { Volume2, VolumeX } from "lucide-react";
 
 function NotFoundComponent() {
   return (
@@ -127,8 +132,96 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const [isLoading, setIsLoading] = useState(true);
 
+  // States για το Popup και τη Μουσική
+  const [showPopup, setShowPopup] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Έλεγχος αν ο χρήστης έχει επισκεφτεί ξανά το site (localStorage)
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("yolte_visited");
+    if (!hasVisited) {
+      setShowPopup(true);
+    }
+  }, []);
+
+  const handleFinishPopup = () => {
+    // Αποθήκευση ώστε να μην ξαναεμφανιστεί το popup σε επόμενη επίσκεψη
+    localStorage.setItem("yolte_visited", "true");
+    setShowPopup(false);
+
+    // Αν ο χρήστης επέλεξε Music On, παίζει η μουσική
+    if (musicEnabled && audioRef.current) {
+      audioRef.current.play().catch((err) => {
+        console.log("Audio autoplay prevented:", err);
+      });
+    }
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
+      {/* Global Persistent Audio - Συνεχίζει να παίζει σε όλο το site αδιάκοπα */}
+      <audio ref={audioRef} src={blickAudio} loop preload="auto" />
+
+      {/* POPUP OVERLAY (Εμφανίζεται μόνο την πρώτη φορά και αφού τελειώσει το Loading Screen) */}
+      {!isLoading && showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0">
+            <img
+              src={gallery4}
+              alt="Popup Background"
+              className="size-full object-cover object-center brightness-75 filter"
+            />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          </div>
+
+          <div className="relative z-10 mx-5 w-full max-w-md rounded-2xl border border-border/60 bg-black/80 p-8 text-center shadow-2xl backdrop-blur-xl">
+            <p className="text-xs tracking-[0.4em] text-accent uppercase">Welcome</p>
+            <h2 className="mt-3 font-display text-3xl tracking-wide text-white sm:text-4xl">
+              ΠΡΟΣΑΡΜΟΣΤΕ ΤΗΝ ΕΜΠΕΙΡΙΑ ΣΑΣ
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Επιλέξτε αν θέλετε να ενεργοποιήσετε τη μουσική υπόκρουση για μια ολοκληρωμένη εμπειρία.
+            </p>
+
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => setMusicEnabled(true)}
+                className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
+                  musicEnabled
+                    ? "border-accent bg-accent/20 text-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]"
+                    : "border-border bg-black/40 text-muted-foreground hover:border-border/80"
+                }`}
+              >
+                <Volume2 className="size-4" /> Music On
+              </button>
+              <button
+                type="button"
+                onClick={() => setMusicEnabled(false)}
+                className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
+                  !musicEnabled
+                    ? "border-accent bg-accent/20 text-accent shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]"
+                    : "border-border bg-black/40 text-muted-foreground hover:border-border/80"
+                }`}
+              >
+                <VolumeX className="size-4" /> Music Off
+              </button>
+            </div>
+
+            <div className="mt-8">
+              <button
+                type="button"
+                onClick={handleFinishPopup}
+                className="hover-glow shine w-full rounded-full bg-primary py-3.5 text-xs tracking-[0.3em] text-primary-foreground uppercase shadow-lg transition-transform active:scale-95"
+              >
+                Finish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading Screen που εμφανίζεται στην αρχή */}
       {isLoading && <LoadingScreen onComplete={() => setIsLoading(false)} />}
 
